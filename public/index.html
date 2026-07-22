@@ -29,6 +29,7 @@
       <label for="mode">Mode</label>
       <select id="mode" name="mode">
         <option value="url">Single app URL</option>
+        <option value="file">Batch: upload a .txt file of app URLs</option>
         <option value="category">Single category URL</option>
         <option value="categories">All categories in categories.txt</option>
       </select>
@@ -36,6 +37,11 @@
       <div id="url-field">
         <label for="url">App URL or slug</label>
         <input type="text" id="url" name="url" placeholder="https://apps.shopify.com/some-app" />
+      </div>
+
+      <div id="file-field" style="display:none">
+        <label for="urlsFile">.txt file (one app URL per line)</label>
+        <input type="file" id="urlsFile" name="urlsFile" accept=".txt" />
       </div>
 
       <div id="category-field" style="display:none">
@@ -79,6 +85,7 @@
   <script>
     const modeSelect = document.getElementById("mode");
     const urlField = document.getElementById("url-field");
+    const fileField = document.getElementById("file-field");
     const categoryField = document.getElementById("category-field");
     const form = document.getElementById("scrape-form");
     const logEl = document.getElementById("log");
@@ -88,8 +95,18 @@
 
     modeSelect.addEventListener("change", () => {
       urlField.style.display = modeSelect.value === "url" ? "block" : "none";
+      fileField.style.display = modeSelect.value === "file" ? "block" : "none";
       categoryField.style.display = modeSelect.value === "category" ? "block" : "none";
     });
+
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
 
     async function loadFiles() {
       const res = await fetch("/api/files");
@@ -118,6 +135,18 @@
         noReviews: document.getElementById("noReviews").checked,
         noSelenium: document.getElementById("noSelenium").checked,
       };
+
+      if (modeSelect.value === "file") {
+        const fileInput = document.getElementById("urlsFile");
+        const file = fileInput.files[0];
+        if (!file) {
+          statusEl.textContent = "Please choose a .txt file first.";
+          runBtn.disabled = false;
+          return;
+        }
+        body.fileName = file.name;
+        body.fileContent = await readFileAsText(file);
+      }
 
       const res = await fetch("/api/scrape", {
         method: "POST",

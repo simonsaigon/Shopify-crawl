@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 scraper.log
 output/
+uploads/
 venv/
 .venv/
 node_modules/

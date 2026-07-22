@@ -7,9 +7,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const OUTPUT_DIR = path.join(ROOT, "output");
+const UPLOAD_DIR = path.join(ROOT, "uploads");
 
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 app.use(express.static(path.join(ROOT, "public")));
+
+function saveUploadedFile(fileName, content) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  const safeName = `${Date.now()}-${path.basename(fileName || "urls.txt")}`;
+  const fullPath = path.join(UPLOAD_DIR, safeName);
+  fs.writeFileSync(fullPath, content, "utf8");
+  return path.join("uploads", safeName);
+}
 
 function buildArgs(body) {
   const args = ["shopifycrawl.py", "-o", "output"];
@@ -23,6 +32,10 @@ function buildArgs(body) {
     args.push("-c", body.category);
   } else if (mode === "categories") {
     args.push("--category-file", "categories.txt");
+  } else if (mode === "file") {
+    if (!body.fileContent) throw new Error("A .txt file of URLs is required");
+    const relPath = saveUploadedFile(body.fileName, body.fileContent);
+    args.push("-f", relPath);
   } else {
     throw new Error("Invalid mode");
   }
