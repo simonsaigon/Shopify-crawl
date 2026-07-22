@@ -30,8 +30,6 @@ function buildArgs(body) {
   } else if (mode === "category") {
     if (!body.category) throw new Error("category URL is required");
     args.push("-c", body.category);
-  } else if (mode === "categories") {
-    args.push("--category-file", "categories.txt");
   } else if (mode === "file") {
     if (!body.fileContent) throw new Error("A .txt file of URLs is required");
     const relPath = saveUploadedFile(body.fileName, body.fileContent);
