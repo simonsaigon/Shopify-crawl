@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Shopify Crawl</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 780px; margin: 40px auto; padding: 0 16px; color: #222; }
+  h1 { font-size: 1.4rem; }
+  fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  legend { padding: 0 6px; font-weight: 600; }
+  label { display: block; margin: 10px 0 4px; font-size: 0.9rem; }
+  input[type=text], input[type=number], select { width: 100%; padding: 6px 8px; box-sizing: border-box; }
+  .row { display: flex; gap: 16px; }
+  .row > div { flex: 1; }
+  .checkbox-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .checkbox-row label { margin: 0; }
+  button { margin-top: 16px; padding: 8px 18px; font-size: 1rem; cursor: pointer; }
+  #log { background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; padding: 12px; height: 260px; overflow-y: auto; white-space: pre-wrap; border-radius: 6px; }
+  #files a { display: block; margin: 4px 0; font-size: 0.9rem; }
+  .status { font-size: 0.9rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1>Shopify App Store Crawler</h1>
+
+  <form id="scrape-form">
+    <fieldset>
+      <legend>What to scrape</legend>
+      <label for="mode">Mode</label>
+      <select id="mode" name="mode">
+        <option value="url">Single app URL</option>
+        <option value="category">Single category URL</option>
+        <option value="categories">All categories in categories.txt</option>
+      </select>
+
+      <div id="url-field">
+        <label for="url">App URL or slug</label>
+        <input type="text" id="url" name="url" placeholder="https://apps.shopify.com/some-app" />
+      </div>
+
+      <div id="category-field" style="display:none">
+        <label for="category">Category URL</label>
+        <input type="text" id="category" name="category" placeholder="https://apps.shopify.com/categories/some-category/all" />
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Options</legend>
+      <div class="row">
+        <div>
+          <label for="maxReviewPages">Max review pages</label>
+          <input type="number" id="maxReviewPages" name="maxReviewPages" min="1" placeholder="all" />
+        </div>
+        <div>
+          <label for="delay">Delay between apps (sec)</label>
+          <input type="number" id="delay" name="delay" min="0" placeholder="5" />
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="noReviews" name="noReviews" />
+        <label for="noReviews">Skip reviews (info only)</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="noSelenium" name="noSelenium" />
+        <label for="noSelenium">Don't use Selenium (plain requests)</label>
+      </div>
+    </fieldset>
+
+    <button type="submit" id="run-btn">Run scrape</button>
+    <div class="status" id="status"></div>
+  </form>
+
+  <h3>Log</h3>
+  <div id="log"></div>
+
+  <h3>Output files</h3>
+  <div id="files"></div>
+
+  <script>
+    const modeSelect = document.getElementById("mode");
+    const urlField = document.getElementById("url-field");
+    const categoryField = document.getElementById("category-field");
+    const form = document.getElementById("scrape-form");
+    const logEl = document.getElementById("log");
+    const statusEl = document.getElementById("status");
+    const runBtn = document.getElementById("run-btn");
+    const filesEl = document.getElementById("files");
+
+    modeSelect.addEventListener("change", () => {
+      urlField.style.display = modeSelect.value === "url" ? "block" : "none";
+      categoryField.style.display = modeSelect.value === "category" ? "block" : "none";
+    });
+
+    async function loadFiles() {
+      const res = await fetch("/api/files");
+      const data = await res.json();
+      filesEl.innerHTML = "";
+      data.files.sort().forEach((f) => {
+        const a = document.createElement("a");
+        a.href = "/api/download?file=" + encodeURIComponent(f);
+        a.textContent = f;
+        filesEl.appendChild(a);
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      logEl.textContent = "";
+      statusEl.textContent = "Running...";
+      runBtn.disabled = true;
+
+      const body = {
+        mode: modeSelect.value,
+        url: document.getElementById("url").value,
+        category: document.getElementById("category").value,
+        maxReviewPages: document.getElementById("maxReviewPages").value,
+        delay: document.getElementById("delay").value,
+        noReviews: document.getElementById("noReviews").checked,
+        noSelenium: document.getElementById("noSelenium").checked,
+      };
+
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop();
+
+        for (const evt of events) {
+          const lines = evt.split("\n");
+          const type = lines[0].replace("event: ", "");
+          const data = JSON.parse(lines[1].replace("data: ", ""));
+
+          if (type === "log") {
+            logEl.textContent += data;
+            logEl.scrollTop = logEl.scrollHeight;
+          } else if (type === "done") {
+            statusEl.textContent = data.code === 0 ? "Done." : `Exited with code ${data.code}`;
+            runBtn.disabled = false;
+            loadFiles();
+          }
+        }
+      }
+    });
+
+    loadFiles();
+  </script>
+</body>
+</html>

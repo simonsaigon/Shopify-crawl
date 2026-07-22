@@ -9,12 +9,16 @@
     "crawl:categories": "python shopifycrawl.py --category-file categories.txt -o output",
     "crawl:category": "python shopifycrawl.py -o output -c",
     "scrape:file": "python shopifycrawl.py -o output -f",
-    "scrape:url": "python shopifycrawl.py -o output -u"
+    "scrape:url": "python shopifycrawl.py -o output -u",
+    "web": "node server.js"
   },
   "keywords": [
     "shopify",
     "scraper",
     "crawler"
   ],
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }

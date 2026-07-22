@@ -60,6 +60,17 @@ Or call the script directly instead of through npm:
 python shopifycrawl.py --help
 ```
 
+### Web UI (local)
+
+A small local web UI is also available so you don't need the command line at all:
+
+```bash
+npm install
+npm run web
+```
+
+Then open http://localhost:3000 in your browser. Pick a mode (single app URL, single category URL, or all categories in `categories.txt`), set any options, and click "Run scrape". The scraper's log streams live in the page, and finished output files appear as download links below. This still runs the Python scraper on your machine — it's a local-only server, not a public deployment.
+
 ## Output
 
 Results are saved under the output directory (`output/` by default, override with `-o`):
@@ -75,3 +86,5 @@ Results are saved under the output directory (`output/` by default, override wit
 - `categories.txt` — list of Shopify category URLs used by `npm run crawl:categories`
 - `requirements.txt` — Python dependencies
 - `package.json` — npm wrapper scripts
+- `server.js` — local Express web UI server
+- `public/index.html` — web UI page
