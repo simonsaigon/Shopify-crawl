@@ -1,0 +1,20 @@
+{
+  "name": "shopify-crawl",
+  "version": "1.0.0",
+  "description": "Shopify App Store scraper (Python) with npm wrapper scripts",
+  "private": true,
+  "scripts": {
+    "setup": "pip install -r requirements.txt",
+    "start": "python shopifycrawl.py --interactive",
+    "crawl:categories": "python shopifycrawl.py --category-file categories.txt -o output",
+    "crawl:category": "python shopifycrawl.py -o output -c",
+    "scrape:file": "python shopifycrawl.py -o output -f",
+    "scrape:url": "python shopifycrawl.py -o output -u"
+  },
+  "keywords": [
+    "shopify",
+    "scraper",
+    "crawler"
+  ],
+  "license": "ISC"
+}
