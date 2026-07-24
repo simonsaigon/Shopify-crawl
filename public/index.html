@@ -9,7 +9,8 @@
   fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
   legend { padding: 0 6px; font-weight: 600; }
   label { display: block; margin: 10px 0 4px; font-size: 0.9rem; }
-  input[type=text], input[type=number], select { width: 100%; padding: 6px 8px; box-sizing: border-box; }
+  input[type=text], input[type=number], select, textarea { width: 100%; padding: 6px 8px; box-sizing: border-box; font-family: inherit; }
+  textarea { resize: vertical; }
   .row { display: flex; gap: 16px; }
   .row > div { flex: 1; }
   .checkbox-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
@@ -28,24 +29,18 @@
       <legend>What to scrape</legend>
       <label for="mode">Mode</label>
       <select id="mode" name="mode">
-        <option value="url">Single app URL</option>
+        <option value="url">Paste app and/or category URL(s)</option>
         <option value="file">Batch: upload a .txt file of app URLs</option>
-        <option value="category">Single category URL</option>
       </select>
 
       <div id="url-field">
-        <label for="url">App URL or slug</label>
-        <input type="text" id="url" name="url" placeholder="https://apps.shopify.com/some-app" />
+        <label for="urls">One URL per line &mdash; app URLs and category URLs can be mixed; each line is identified automatically</label>
+        <textarea id="urls" name="urls" rows="6" placeholder="https://apps.shopify.com/some-app&#10;https://apps.shopify.com/categories/some-category/all&#10;https://apps.shopify.com/another-app"></textarea>
       </div>
 
       <div id="file-field" style="display:none">
         <label for="urlsFile">.txt file (one app URL per line)</label>
         <input type="file" id="urlsFile" name="urlsFile" accept=".txt" />
-      </div>
-
-      <div id="category-field" style="display:none">
-        <label for="category">Category URL</label>
-        <input type="text" id="category" name="category" placeholder="https://apps.shopify.com/categories/some-category/all" />
       </div>
     </fieldset>
 
@@ -85,7 +80,6 @@
     const modeSelect = document.getElementById("mode");
     const urlField = document.getElementById("url-field");
     const fileField = document.getElementById("file-field");
-    const categoryField = document.getElementById("category-field");
     const form = document.getElementById("scrape-form");
     const logEl = document.getElementById("log");
     const statusEl = document.getElementById("status");
@@ -95,7 +89,6 @@
     modeSelect.addEventListener("change", () => {
       urlField.style.display = modeSelect.value === "url" ? "block" : "none";
       fileField.style.display = modeSelect.value === "file" ? "block" : "none";
-      categoryField.style.display = modeSelect.value === "category" ? "block" : "none";
     });
 
     function readFileAsText(file) {
@@ -127,8 +120,7 @@
 
       const body = {
         mode: modeSelect.value,
-        url: document.getElementById("url").value,
-        category: document.getElementById("category").value,
+        urls: document.getElementById("urls").value,
         maxReviewPages: document.getElementById("maxReviewPages").value,
         delay: document.getElementById("delay").value,
         noReviews: document.getElementById("noReviews").checked,
@@ -152,6 +144,13 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        statusEl.textContent = err.error || `Request failed (${res.status})`;
+        runBtn.disabled = false;
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
